@@ -12,16 +12,22 @@ import com.stripe.model.PaymentIntent;
 public class RequiresCapture {
     public static void main(String[] args) {
         try {
-            // Docs: https://stripe.com/docs/api/payment_intents/list
+            // List Payment Intents: https://stripe.com/docs/api/payment_intents/list
             // Auto pagination docs: https://stripe.com/docs/api/pagination/auto
             Dotenv dotenv = Dotenv.load();
             Stripe.apiKey = dotenv.get("STRIPE_SECRET_KEY");
 
-            long unixTime = Instant.now().minus(4, ChronoUnit.DAYS).getEpochSecond();
+            long greaterThan = Instant.now().minus(4, ChronoUnit.DAYS).getEpochSecond();
 
-            System.out.println("Unit Time: " + unixTime);
+            // You don't want to accidentally capture a payment that was going to get captured
+            // successfully anyway. So we wait for things which are at least 1 hour old.
+            long lessThan = Instant.now().minus(1, ChronoUnit.HOURS).getEpochSecond();
+
+            System.out.println("greaterThan: " + greaterThan);
+            System.out.println("lessThan: " + lessThan);
             Map<String, Object> created = new HashMap<>();
-            created.put("gt", unixTime);
+            created.put("gt", greaterThan);
+            created.put("lt", lessThan);
             Map<String, Object> params = new HashMap<>();
             params.put("created", created);
             params.put("limit", 100);
@@ -30,7 +36,8 @@ public class RequiresCapture {
             for (PaymentIntent paymentIntent : paymentIntents) {
                 if ("requires_capture".equals(paymentIntent.getStatus())) {
                     System.out.println(paymentIntent);
-                    // Capture the payment!
+                    // Capture Payment Intent: https://stripe.com/docs/api/payment_intents/capture?lang=java
+                    paymentIntent.capture();
                 }
             }
         } catch (Exception exception) {
